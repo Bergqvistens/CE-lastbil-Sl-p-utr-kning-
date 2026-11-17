@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CE-koll – längd och BK-vikt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: verkstadsgolv – rakt, tydligt, inga omvägar
+   IDEA: en vägskylt/väginformationstavla för tung trafik
+   PICTURE: det stora resultatet (ton / meter) i fyra BK-tavlor
+   COLOUR and TYPE: svart grund, orange skyltfärg, grönt = godkänt; Barlow Condensed + Barlow
+   LAYOUT: en kolumn, flikar överst, inmatning – resultat direkt under */
+:root{color-scheme:dark;--bg:#0b0b0a;--card:#161614;--line:#2b2a27;--ink:#d9d6cf;--mut:#9a968d;--or:#ff7a00;--or2:#3a2210;--gr:#2fbf5b;--gr2:#0f2a18}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip}
+header{background:var(--or);color:#111;padding:18px max(5vw,16px) 14px}
+h1{font:700 clamp(30px,6vw,44px)/1.05 "Barlow Condensed",sans-serif;margin:0}
+header p{margin:4px 0 0;font-weight:500}
+main{max-width:900px;margin:0 auto;padding:16px max(4vw,14px) 48px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;position:sticky;top:0;background:var(--bg);padding:10px 0;z-index:5}
+.tabs button{min-width:30%}.tabs button,.seg button{flex:1;min-height:48px;border:2px solid var(--or);background:transparent;color:var(--or);font:700 18px "Barlow Condensed",sans-serif;border-radius:10px;cursor:pointer}
+.tabs button[aria-selected=true],.seg button[aria-pressed=true]{background:var(--or);color:#111}
+.seg{display:flex;gap:6px;flex-wrap:wrap}.seg button{font-size:16px;min-height:44px;padding:4px 8px;border-width:1.5px}
+.card{background:var(--card);border:1.5px solid var(--or);border-radius:14px;padding:16px;margin:0 0 14px}
+h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;color:var(--or);margin:0 0 10px}
+h3{font:600 18px/1.2 "Barlow Condensed",sans-serif;margin:14px 0 8px;color:var(--ink)}
+label{display:block;font-weight:500;margin:10px 0 4px}
+.hint{color:var(--mut);font-size:14px;margin:2px 0 0}
+input[type=text]{width:100%;min-height:48px;font:600 18px Barlow,sans-serif;background:#0f0f0e;color:var(--ink);border:1.5px solid var(--or);border-radius:10px;padding:8px 12px}
+input:focus,button:focus-visible,select:focus{outline:3px solid var(--or);outline-offset:2px}
+select{width:100%;min-height:48px;font:500 16px Barlow,sans-serif;background:#0f0f0e;color:var(--ink);border:1.5px solid var(--or);border-radius:10px;padding:8px}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-weight:500}
+.chk input{width:24px;height:24px;flex:none;accent-color:var(--gr);margin-top:2px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 10px}
+.res{border-radius:14px;padding:16px;margin:0 0 14px;border:2px solid}
+.res.ok{background:var(--gr2);border-color:var(--gr)}.res.bad{background:var(--or2);border-color:var(--or)}.res.wait{background:var(--card);border-color:var(--or)}
+.big{font:700 clamp(38px,9vw,58px)/1 "Barlow Condensed",sans-serif}
+.ok .big{color:var(--gr)}.bad .big{color:var(--or)}
+.bk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.bkc{background:var(--card);border:2px solid var(--or);border-radius:14px;padding:14px}
+.bkc .t{font:700 22px "Barlow Condensed",sans-serif;color:var(--or)}
+.bkc .v{font:700 clamp(40px,8vw,54px)/1 "Barlow Condensed",sans-serif;color:var(--gr);margin:6px 0 2px;white-space:nowrap}
+.bkc .v small{font-size:.45em;color:var(--ink)}
+.row{display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding:6px 0;font-size:15px}
+.row b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.why{color:var(--mut);font-size:13.5px}
+.warn{color:var(--or);font-size:14px;margin-top:6px}
+.good{color:var(--gr);font-size:14px;margin-top:6px}
+ul.cl{list-style:none;padding:0;margin:8px 0 0}ul.cl li{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.dot{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;color:#111}
+.d-ok{background:var(--gr)}.d-fail{background:var(--or)}.d-miss{background:#4a4741;color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:15px}th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left;white-space:normal}
+th{color:var(--or);font-weight:600}
+.scroll{overflow-x:auto}
+.src{color:var(--mut);font-size:13.5px}
+.src a{color:var(--or)}
+.opts{display:grid;gap:8px;margin-top:6px}
+.opts button{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:10px 14px;text-align:left;border:1.5px solid var(--or);border-radius:12px;background:#0f0f0e;color:var(--ink);font:600 16px/1.3 Barlow,sans-serif;cursor:pointer}
+.opts .nr{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--or);color:var(--or);font:700 16px "Barlow Condensed",sans-serif}
+.opts button[aria-pressed=true]{background:var(--or);color:#111}.opts button[aria-pressed=true] .nr{background:#111;color:var(--or);border-color:#111}
+[hidden]{display:none!important}
+@media(max-width:600px){.grid3{grid-template-columns:minmax(0,1fr)}.bk{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:420px){.grid2{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<header><h1>CE-koll</h1><p>Längd på ekipaget och maxvikt på BK1–BK4</p></header>
+<main>
+<div class="tabs" role="tablist">
+  <button role="tab" id="t-vikt" aria-selected="true">Vikt</button>
+  <button role="tab" id="t-axlar" aria-selected="false">Axlar</button>
+  <button role="tab" id="t-koppling" aria-selected="false">Koppling</button>
+  <button role="tab" id="t-langd" aria-selected="false">Längd</button>
+  <button role="tab" id="t-ref" aria-selected="false">Tabeller</button>
+</div>
+
+<!-- ================= VIKT ================= -->
+<section id="p-vikt">
+  <div class="card">
+    <h2>Ekipage</h2>
+    <div class="seg" id="wType">
+      <button data-v="slap" aria-pressed="true">Lastbil + släpvagn</button>
+      <button data-v="pahang" aria-pressed="false">Dragbil + påhängsvagn</button>
+    </div>
+    <p class="hint">Axelavstånd hittar du i registreringsbeviset. Skriv meter med komma, t.ex. 5,6.</p>
+    <h3 id="aHead">Lastbil (dragfordon)</h3>
+    <div class="grid2">
+      <div><label for="axA">Antal axlar</label>
+        <select id="axA"><option value="2">2 axlar</option><option value="3" selected>3 axlar</option><option value="4">4 axlar eller fler</option></select></div>
+      <div><label for="dA">Första–sista axel (m)</label><input type="text" inputmode="decimal" id="dA" placeholder="t.ex. 5,6"></div>
+    </div>
+    <label class="chk" id="specWrap"><input type="checkbox" id="spec"><span>Drivaxeln har dubbelmonterade hjul och luftfjädring (eller likvärdig fjädring), eller ingen drivaxel väger över 9,5 ton</span></label>
+    <div id="bWrap"><h3>Släpvagn</h3>
+      <label for="dB">Första–sista axel på släpvagnen (m)</label><input type="text" inputmode="decimal" id="dB" placeholder="t.ex. 7,8">
+      <p class="hint">För dolly med påhängsvagn: dollyns första axel till påhängsvagnens sista axel.</p></div>
+    <div id="pWrap" hidden><h3>Påhängsvagn</h3>
+      <div class="grid2">
+        <div><label for="pT">Påhängsvagnens axlar</label><select id="pT"><option value="enkel">En enkelaxel</option><option value="tva">Två enkelaxlar (2,0 m eller mer emellan)</option><option value="boggi" selected>Boggi (2 axlar)</option><option value="trippel">Trippelaxel (3 axlar)</option></select></div>
+        <div id="pSW"><label for="pS" id="pSL">Avstånd mellan axlarna (m)</label><input type="text" inputmode="decimal" id="pS"></div>
+      </div></div>
+    <h3>Hela ekipaget</h3>
+    <div id="cSlap"><label for="dC">Första axel på bilen – sista axel på släpet (m)</label><input type="text" inputmode="decimal" id="dC" placeholder="t.ex. 19,5"></div>
+    <div id="cPah" hidden>
+      <div class="grid2">
+        <div><label for="d5">Dragbil: första axel – vändskivans centrum (m)</label><input type="text" inputmode="decimal" id="d5" placeholder="t.ex. 3,4"></div>
+        <div><label for="dK">Påhängsvagn: kingpin – sista axel (m)</label><input type="text" inputmode="decimal" id="dK" placeholder="t.ex. 8,9"></div>
+      </div>
+      <p class="hint" id="cSum">Appen lägger ihop måtten: kingpin sitter i vändskivans centrum.</p>
+    </div>
+    <h3>Avstånd mellan fordonen (valfritt)</h3>
+    <div class="grid3">
+      <div><label for="gA">Bilens sista axel är</label><select id="gA"><option value="e">enkelaxel</option><option value="b" selected>i en boggi</option><option value="t">i en trippelaxel</option></select></div>
+      <div><label for="gB">Släpets första axel är</label><select id="gB"><option value="e">enkelaxel</option><option value="b" selected>i en boggi</option><option value="t">i en trippelaxel</option></select></div>
+      <div><label for="gD">Avstånd mellan dem (m)</label><input type="text" inputmode="decimal" id="gD" placeholder="t.ex. 4,2"></div>
+    </div>
+    <h3>Tjänstevikt – för att räkna ut lastvikten</h3>
+    <p class="hint">Tjänstevikten står i registreringsbeviset.</p>
+    <div class="grid2">
+      <div><label for="tA" id="tAL">Tjänstevikt lastbil (ton)</label><input type="text" inputmode="decimal" id="tA"></div>
+      <div><label for="tB" id="tBL">Tjänstevikt släpvagn (ton)</label><input type="text" inputmode="decimal" id="tB"></div>
+    </div>
+    <h3>Från registreringsbeviset (valfritt)</h3>
+    <p class="hint">Fyller du i dessa används det lägsta värdet – lagen och fordonets egna gränser gäller båda.</p>
+    <div class="grid3">
+      <div><label for="rA">Totalvikt bil (ton)</label><input type="text" inputmode="decimal" id="rA"></div>
+      <div id="rBWrap"><label for="rB">Totalvikt släp (ton)</label><input type="text" inputmode="decimal" id="rB"></div>
+      <div><label for="rT">Största tågvikt (ton)</label><input type="text" inputmode="decimal" id="rT"></div>
+    </div>
+  </div>
+  <div id="wOut"></div>
+  <div class="card src" id="wNotes">
+    <h2>Bra att veta</h2>
+    <p>Appen räknar högsta tillåtna bruttovikt enligt bruttoviktstabellerna. Den kontrollerar <b>inte</b> hur vikten fördelas på varje axel, boggi och trippelaxel – den gränsen gäller alltid också (se fliken Tabeller).</p>
+    <p>Påhängsvagn: appen visar vad påhängsvagnens egna axlar får bära enligt axel-, boggi- och trippelaxeltrycket. Den del av vikten som vilar på kingpin bärs av dragbilen och ingår i dragbilens och hela ekipagets vikt. Påhängsvagnens registrerade totalvikt gäller också.</p>
+    <p>Alternativt bränsle: ett motordrivet fordon med två eller tre axlar får överskrida gränsen med den extra vikt tekniken kräver, högst 1 ton (2 ton om driften är utsläppsfri). Det ingår inte i uträkningen.</p>
+    <p>Lastvikt = högsta tillåtna vikt för hela ekipaget minus tjänstevikterna. Fordonens verkliga vikt kan skilja sig från tjänstevikten, till exempel genom extrautrustning eller bränslemängd, så en vägning ger det säkraste svaret. Lasten måste också fördelas så att varje axel håller sig inom sin gräns.</p>
+    <p>Väg med lokal viktbegränsning eller tillfällig begränsning (till exempel tjällossning) har lägre gränser än tabellerna.</p>
+  </div>
+</section>
+
+<!-- ================= AXLAR ================= -->
+<section id="p-axlar" hidden>
+  <div class="card">
+    <h2>Kontrollera uppmätta axelvikter</h2>
+    <p class="hint">Skriv in vad varje axel väger, till exempel från en våg. Appen jämför varje axel, boggi och trippelaxel med gränsen på BK1–BK4.</p>
+    <div id="gl"></div>
+    <div class="seg" style="margin-top:12px"><button id="addG" aria-pressed="false">+ Lägg till axelgrupp</button></div>
+  </div>
+  <div id="aOut"></div>
+  <div class="card src">
+    <h2>Bra att veta</h2>
+    <p>Boggi = två axlar med mindre än 2,0 m mellan. Trippelaxel = tre axlar med mindre än 5,0 m mellan första och tredje.</p>
+    <p>Appen jämför boggins och trippelaxelns sammanlagda vikt med gränsen. Om gränsen för en enkelaxel också gäller varje axel i en boggi har jag inte kunnat bekräfta i lagtexten, så det kontrolleras inte.</p>
+    <p>Har du fyllt i registrerad garanterad belastning används det lägsta värdet.</p>
+  </div>
+</section>
+
+<!-- ================= KOPPLING ================= -->
+<section id="p-koppling" hidden>
+  <div class="card">
+    <h2>Klarar kopplingen ekipaget?</h2>
+    <p class="hint">Appen räknar ut kopplingskrafterna enligt TSFS 2019:127 och jämför dem med prestandavärdena. Gäller kopplingsanordningar som är typgodkända enligt direktiv 94/20/EG eller ECE-reglemente 55.</p>
+    <h3>Välj kombination</h3>
+    <input type="hidden" id="kC" value="3"><div class="opts" id="kOpts" role="group" aria-label="Kombination"><button type="button" data-v="1" aria-pressed="false"><span class="nr">1</span><span>Lastbil + släpvagn med ledad dragstång</span></button><button type="button" data-v="2" aria-pressed="false"><span class="nr">2</span><span>Lastbil + släpkärra med stel dragstång</span></button><button type="button" data-v="3" aria-pressed="true"><span class="nr">3</span><span>Dragbil + påhängsvagn</span></button><button type="button" data-v="4" aria-pressed="false"><span class="nr">4</span><span>Lastbil + dolly + påhängsvagn</span></button><button type="button" data-v="5" aria-pressed="false"><span class="nr">5</span><span>Dragbil + påhängsvagn + släpkärra</span></button><button type="button" data-v="6" aria-pressed="false"><span class="nr">6</span><span>Dragbil + påhängsvagn + dolly + påhängsvagn</span></button><button type="button" data-v="7" aria-pressed="false"><span class="nr">7</span><span>Lastbil + två släpkärror med stel dragstång</span></button><button type="button" data-v="8" aria-pressed="false"><span class="nr">8</span><span>Dragbil + link + påhängsvagn</span></button></div>
+    <p class="hint">Bruttovikt = vad fordonet väger med last. Använder du totalvikten från registreringsbeviset kontrollerar du fullt lastat.</p>
+    <div class="grid2" id="kIn"></div>
+    <label class="chk" id="kAirW"><input type="checkbox" id="kAir"><span>Släpkärran har luftfjädring</span></label>
+    <h3>Prestandavärden</h3>
+    <p class="hint">Finns i registreringsbeviset och på kopplingsanordningens typskylt. Har bilen, släpet och kopplingen olika värden – skriv det lägsta.</p>
+    <div class="grid2" id="kPv"></div>
+    <h3>Släpvagnsvikt (valfritt)</h3>
+    <label for="kO1">Bilens högsta vikt bromsat släp, O.1 (ton)</label><input type="text" inputmode="decimal" id="kO1">
+  </div>
+  <div id="kOut"></div>
+  <div class="card src">
+    <h2>Bra att veta</h2>
+    <p>Kopplingskrafterna ska vara lika med eller lägre än fordonens och kopplingsanordningarnas prestandavärden (TSFS 2019:127, 2 kap. 10 §). g = 9,81 m/s² enligt ECE-reglemente 55.</p>
+    <p>Kombination 5–8 följer formlerna i bilagan exakt. I kombination 7 gäller regeln att kvoten X²/L² minst ska vara 1,0 bara för V₂, eftersom det är så formeln står i föreskriften. Formeln har ett gemensamt a-värde för båda släpkärrorna.</p>
+    <p>Kopplingsklassade fordon (före 1 maj 2003) och kopplingsbesiktade fordon har egna regler, och för släpvagn med ledad dragstång får främre axelgruppens bruttovikt inte överstiga kopplingens Av-värde. Det ingår inte i uträkningen.</p>
+    <p>Kontrollen av vikt bromsat släp (O.1) bygger på boken CE Släp: släpets bruttovikt får inte överstiga dragfordonets ”Högsta vikt bromsat släp”.</p>
+  </div>
+</section>
+
+<!-- ================= LÄNGD ================= -->
+<section id="p-langd" hidden>
+  <div class="card">
+    <h2>Ekipage</h2>
+    <div class="seg" id="lType">
+      <button data-v="slap" aria-pressed="true">Lastbil + släpvagn</button>
+      <button data-v="dolly" aria-pressed="false">Lastbil + dolly + påhängsvagn</button>
+      <button data-v="pahang" aria-pressed="false">Dragbil + påhängsvagn</button>
+    </div>
+    <label for="L">Hela ekipagets längd, lasten inräknad (m)</label>
+    <input type="text" inputmode="decimal" id="L" placeholder="t.ex. 24,0">
+  </div>
+  <div id="lOut"></div>
+  <div class="card" id="l2525" hidden>
+    <h2>Villkor för 25,25 meter</h2>
+    <p class="hint">Alla villkor i 4 kap. 17 § trafikförordningen måste vara uppfyllda.</p>
+    <div class="grid2">
+      <div><label for="lA">Motordrivet fordon, längd (m)</label><input type="text" inputmode="decimal" id="lA"></div>
+      <div id="lBWrap"><label for="lB">Släpvagn, längd (m)</label><input type="text" inputmode="decimal" id="lB"></div>
+      <div class="kp"><label for="kR">Kopplingstapp – bakkant påhängsvagn (m)</label><input type="text" inputmode="decimal" id="kR"></div>
+      <div class="kp"><label for="kF">Kopplingstapp – framkant påhängsvagn (m)</label><input type="text" inputmode="decimal" id="kF"></div>
+      <div><label for="cg">Sammanlagd lastlängd bakom hytten (m)</label><input type="text" inputmode="decimal" id="cg"></div>
+      <div><label for="cs">Framkant lastutrymme – bakersta punkt (m)</label><input type="text" inputmode="decimal" id="cs"></div>
+      <div><label for="wd">Bredd (m)</label><input type="text" inputmode="decimal" id="wd" placeholder="t.ex. 2,55"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="tmp"><span>Temperaturkontrollerad påbyggnad, container eller växelflak (bredd högst 2,60 m)</span></label>
+    <h3>Bekräfta</h3>
+    <label class="chk"><input type="checkbox" id="cABS"><span>Varje fordon har låsningsfria bromsar och kopplingsanordningar enligt Transportstyrelsens föreskrifter</span></label>
+    <label class="chk"><input type="checkbox" id="cTA"><span>Varje motordrivet fordon kan vända inom en cirkelring med yttre radie 12,5 m och inre radie 5,3 m</span></label>
+    <label class="chk"><input type="checkbox" id="cTT"><span>Fordonståget kan vända inom en cirkelring med yttre radie 12,5 m och inre radie 2,0 m</span></label>
+    <ul class="cl" id="cl"></ul>
+  </div>
+  <div class="card src">
+    <h2>Bra att veta</h2>
+    <p>Bestämmelserna om längd och avstånd i villkor 2–5 gäller även avtagbara påbyggnader och containrar.</p>
+    <p>Kombinationer som används för 25,25 m: lastbil med dolly och påhängsvagn, lastbil (dragbil) med dubbla påhängsvagnar, samt dragbil med påhängsvagn och kärra. Utrustning som inte ska räknas in i längden regleras i VVFS 2008:261.</p>
+  </div>
+</section>
+
+<!-- ================= AXELTRYCK ================= -->
+<section id="p-ref" hidden>
+  <div class="card"><h2>Max axel-, boggi- och trippelaxeltryck</h2>
+  <div class="scroll"><table><thead><tr><th></th><th>BK1</th><th>BK2</th><th>BK3</th><th>BK4</th></tr></thead><tbody>
+  <tr><td>Axel som inte är drivande</td><td>10</td><td>10</td><td>8</td><td>10</td></tr>
+  <tr><td>Drivande axel</td><td>11,5</td><td>10</td><td>8</td><td>11,5</td></tr>
+  <tr><td colspan="5" style="color:var(--or);text-align:left">Boggi – avstånd mellan axlarna</td></tr>
+  <tr><td>Mindre än 1,0 m</td><td>11,5</td><td>11,5</td><td>11,5</td><td>11,5</td></tr>
+  <tr><td>1,0 m men inte 1,3 m</td><td>16</td><td>16</td><td>12</td><td>16</td></tr>
+  <tr><td>1,3 m men inte 1,8 m</td><td>18</td><td>16</td><td>12</td><td>18</td></tr>
+  <tr><td>1,3 m men inte 1,8 m, drivaxel med dubbelmontage + luftfjädring eller max 9,5 t per axel</td><td>19</td><td>16</td><td>12</td><td>19</td></tr>
+  <tr><td>1,8 m eller större</td><td>20</td><td>16</td><td>12</td><td>20</td></tr>
+  <tr><td colspan="5" style="color:var(--or);text-align:left">Trippelaxel – avstånd mellan de yttre axlarna</td></tr>
+  <tr><td>Mindre än 2,6 m</td><td>21</td><td>20</td><td>13</td><td>21</td></tr>
+  <tr><td>2,6 m men inte 4,4 m</td><td>24</td><td>22</td><td>13</td><td>24</td></tr>
+  <tr><td>4,4 m men inte 4,7 m</td><td>25</td><td>22</td><td>13</td><td>25</td></tr>
+  <tr><td>4,7 m eller större</td><td>26</td><td>22</td><td>13</td><td>26</td></tr>
+  </tbody></table></div>
+  <p class="hint">Alla värden i ton. Boggi = två axlar med mindre än 2,0 m mellan. Trippelaxel = tre axlar med mindre än 5,0 m mellan första och tredje.</p></div>
+  <div class="card"><h2>Minsta avstånd mellan fordonen</h2>
+  <p class="hint">Från sista axeln på det främre fordonet till första axeln på det tillkopplade.</p>
+  <div class="scroll"><table><thead><tr><th></th><th>BK1</th><th>BK2</th><th>BK3</th><th>BK4</th></tr></thead><tbody>
+  <tr><td>Båda är enkelaxlar</td><td>3 m</td><td>3 m</td><td>3 m</td><td>3 m</td></tr>
+  <tr><td>Enkelaxel och boggi eller trippelaxel</td><td>3 m</td><td>4 m</td><td>4 m</td><td>3 m</td></tr>
+  <tr><td>Var sin boggi</td><td>4 m</td><td>4 m</td><td>4 m</td><td>4 m</td></tr>
+  <tr><td>Boggi och trippelaxel, eller båda trippelaxlar</td><td>5 m</td><td>–</td><td>–</td><td>4 m</td></tr>
+  </tbody></table></div>
+  <p class="hint">Är avståndet kortare får ingen möjlig axelkombination i fordonståget överskrida bruttoviktstabellen för sitt avstånd.</p></div>
+</section>
+
+<p class="src">Källor: trafikförordningen (1998:1276) 4 kap. 11–17 §§ och bilaga 1–4, i lydelse kontrollerad på riksdagen.se 2026-11-17, samt Transportstyrelsens broschyr ”Lasta lagligt” (TS201616). Appen är ett hjälpmedel – vid tvekan gäller lagtexten och vägens skyltning.</p>
+</main>
+<script>
+// CE-koll – beräkningslogik. Källa: Trafikförordningen (1998:1276) 4 kap. 12–13, 17 §§ och bilaga 1–4,
+// kontrollerad mot Transportstyrelsens "Lasta lagligt" (TS201616, utg. 3, maj 2018) och riksdagen.se (nov 2026).
+// Alla avstånd hanteras i hela centimeter för att undvika avrundningsfel. "x men inte y" = x <= d < y.
+var CE = (function () {
+  // [från cm, ton]
+  var BK1 = [[0,11.5],[100,16],[130,18],[180,20],[200,21],[260,24],[440,25],[470,26],[520,27],[540,28],[560,29],[580,30],[600,31],[620,32],[825,33],[850,34],[875,35],[900,36],[925,37],[950,38],[975,39],[1000,40],[1025,41],[1050,42],[1075,43],[1100,44],[1125,45],[1150,46],[1175,47],[1200,48],[1250,49],[1300,50],[1350,51],[1400,52],[1450,53],[1500,54],[1550,55],[1600,56],[1650,57],[1700,58],[1750,59],[1800,60],[1850,61],[1900,62],[1960,63],[2020,64]];
+  var BK1_SLAP = [[660,33],[680,34],[700,35],[720,36],[760,37],[780,38]];
+  var BK2 = [[0,16],[200,20],[260,22],[480,22.16],[500,22.5],[520,22.84],[540,23.18],[560,23.52],[580,23.86],[600,24.2],[620,24.54],[640,24.88],[660,25.22],[680,25.56],[700,25.9],[720,26.24],[740,26.58],[760,26.92],[780,27.26],[800,27.6],[820,27.94],[840,28.28],[860,28.62],[880,28.96],[900,29.3],[920,29.64],[940,29.98],[960,30.32],[980,30.66],[1000,31],[1020,31.34],[1040,31.68],[1060,32.02],[1080,32.36],[1100,32.7],[1120,33.04],[1140,38],[1340,38.04],[1360,38.56],[1380,39.08],[1400,39.6],[1420,40.12],[1440,40.64],[1460,41.16],[1480,41.68],[1500,42.2],[1520,42.72],[1540,43.24],[1560,43.76],[1580,44.28],[1600,44.8],[1620,45.32],[1640,45.84],[1660,46.36],[1680,46.88],[1700,47.4],[1720,47.92],[1740,48.44],[1760,48.96],[1780,49.48],[1800,50],[1820,50.52],[1840,51.04],[1850,51.4]];
+  var BK3 = [[0,12],[200,12.5],[240,13],[280,13.5],[320,14],[360,14.5],[400,15],[440,15.5],[480,16],[520,16.5],[560,17],[600,17.5],[640,18],[680,18.5],[720,19],[760,19.5],[800,20],[840,20.5],[880,21],[920,21.5],[960,22],[1000,22.5],[1040,23],[1080,23.5],[1120,24],[1160,24.5],[1200,25],[1240,25.5],[1280,26],[1320,26.5],[1360,27],[1400,27.5],[1440,28],[1480,28.5],[1520,29],[1560,29.5],[1600,30],[1640,30.5],[1680,31],[1720,31.5],[1760,32],[1800,32.5],[1840,33],[1880,33.5],[1920,34],[1960,34.5],[2000,35],[2040,35.5],[2080,36],[2120,36.5],[2160,37]];
+  var BK4 = [[0,11.5],[100,16],[130,18],[180,20],[200,21],[260,24],[440,25],[470,26],[520,27],[540,28],[560,29],[580,30],[600,31],[620,32],[640,33],[680,34],[700,35],[720,36],[760,37],[780,38],[800,39],[820,40],[840,41],[860,42],[880,43],[900,44],[920,45],[940,46],[960,47],[980,48],[1000,49],[1020,50],[1060,51],[1100,52],[1140,53],[1180,54],[1220,55],[1260,56],[1300,57],[1340,58],[1380,59],[1420,60],[1460,61],[1500,62],[1540,63],[1580,64],[1620,65],[1660,66],[1700,67],[1740,68],[1780,69],[1820,70],[1870,71],[1920,72],[1970,73],[2020,74]];
+  var TABLES = {1:BK1, 2:BK2, 3:BK3, 4:BK4};
+
+  function cm(m) { return Math.round(m * 100); }
+  function lookup(tab, dcm) {
+    var t = null;
+    for (var i = 0; i < tab.length; i++) { if (dcm >= tab[i][0]) t = tab[i][1]; else break; }
+    return t;
+  }
+  // Högsta bruttovikt enligt bilaga för BK k vid avstånd d (meter)
+  function table(k, dM) {
+    var d = cm(dM);
+    if (k === 3 && d >= 2200) {
+      // "37,5 ton med tillägg av 0,25 ton för varje 0,2 meter varmed axelavståndet överstiger 22,0 meter"
+      return Math.round((37.5 + 0.25 * Math.floor((d - 2200) / 20)) * 100) / 100;
+    }
+    return lookup(TABLES[k], d);
+  }
+  // Släpvagn / dolly + påhängsvagn: BK1 har egen tabell från 6,6 m
+  function trailerTable(k, dM) {
+    var d = cm(dM);
+    if (k === 1 && d >= 660) return lookup(BK1_SLAP, d);
+    return table(k, dM);
+  }
+  // Gränser för motordrivet fordon (ej buss) – bilaga 1 och 2. Bilaga 3 och 4 anger inga sådana.
+  function vehicleCap(k, axles, special) {
+    if (k === 1) {
+      if (axles === 2) return { t: 18, why: "två axlar (bilaga 1)" };
+      if (axles === 3) return special ? { t: 28, why: "tre axlar med dubbelmontage + luftfjädring eller max 9,5 t/drivaxel (bilaga 1)" } : { t: 25, why: "tre axlar (bilaga 1)" };
+      return special ? { t: 32, why: "fyra eller fler axlar med dubbelmontage + luftfjädring eller max 9,5 t/drivaxel (bilaga 1)" } : { t: 31, why: "fyra eller fler axlar (bilaga 1)" };
+    }
+    if (k === 2 && axles === 2) return { t: 18, why: "två axlar (bilaga 2)" };
+    return null;
+  }
+
+  // 13 § minsta avstånd (m) mellan sista axeln på främre fordonet och första axeln på det tillkopplade.
+  // typ: 'ee' enkel–enkel, 'eg' enkel–boggi/trippel, 'bb' boggi–boggi, 'bt' boggi–trippel eller trippel–trippel
+  var MIN_GAP = { ee: {1:3,2:3,3:3,4:3}, eg: {1:3,2:4,3:4,4:3}, bb: {1:4,2:4,3:4,4:4}, bt: {1:5,2:null,3:null,4:4} };
+  function gapType(a, b) {
+    var g = function (x) { return x === 'e' ? 0 : (x === 'b' ? 1 : 2); };
+    var x = g(a), y = g(b);
+    if (x === 0 && y === 0) return 'ee';
+    if (x === 0 || y === 0) return 'eg';
+    if (x === 1 && y === 1) return 'bb';
+    return 'bt';
+  }
+  function minGap(k, a, b) { return MIN_GAP[gapType(a, b)][k]; }
+
+  function min2(a, b) { return a == null ? b : (b == null ? a : Math.min(a, b)); }
+  function r2(x) { return x == null ? null : Math.round(x * 100) / 100; }
+
+  // in: {type:'slap'|'pahang', axlesA, special, dA, dB, dC, regA, regB, regTag}
+  function weights(k, p) {
+    var res = { k: k };
+    var aTab = table(k, p.dA);
+    var cap = vehicleCap(k, p.axlesA, p.special);
+    var A = aTab, aWhy = "bruttoviktstabellen vid " + fmt(p.dA) + " m";
+    if (cap && cap.t < A) { A = cap.t; aWhy = cap.why; }
+    if (p.regA && p.regA < A) { A = p.regA; aWhy = "registrerad totalvikt"; }
+    res.A = r2(A); res.aWhy = aWhy;
+    var C = table(k, p.dC), cWhy = "bruttoviktstabellen vid " + fmt(p.dC) + " m";
+    if (p.type === 'slap') {
+      var B = trailerTable(k, p.dB), bWhy = (k === 1 && cm(p.dB) >= 660) ? "släpvagnstabellen (bilaga 1) vid " + fmt(p.dB) + " m" : "bruttoviktstabellen vid " + fmt(p.dB) + " m";
+      if (p.regB && p.regB < B) { B = p.regB; bWhy = "registrerad totalvikt"; }
+      res.B = r2(B); res.bWhy = bWhy;
+      var sum = r2(A + B);
+      if (sum < C) { C = sum; cWhy = "bilens och släpets vikter tillsammans (A + B)"; }
+    }
+    if (p.regTag && p.regTag < C) { C = p.regTag; cWhy = "registrerad största tågvikt"; }
+    res.C = r2(C); res.cWhy = cWhy;
+    return res;
+  }
+
+  // Längd: {type, L, lenA, lenB, kingRear, kingFront, cargo, cargoSpan, width, temp, okABS, okTurnA, okTurnTag}
+  function length(p) {
+    var L = cm(p.L);
+    if (L <= 2400) return { status: 'ok', checks: [] };
+    if (L > 2525) return { status: 'over', checks: [] };
+    var c = [];
+    function add(label, val, lim, unit) {
+      if (val == null || isNaN(val)) c.push({ label: label, state: 'missing', lim: lim });
+      else c.push({ label: label, state: cm(val) <= cm(lim) ? 'ok' : 'fail', val: val, lim: lim });
+    }
+    add("Motordrivet fordon, längd", p.lenA, 12.0);
+    if (p.type === 'slap') add("Släpvagn, längd", p.lenB, 12.0);
+    if (p.type !== 'slap') {
+      add("Kopplingstapp – bakkant påhängsvagn", p.kingRear, 12.0);
+      add("Kopplingstapp – framkant påhängsvagn", p.kingFront, 2.04);
+    }
+    add("Sammanlagd lastlängd bakom förarhytten", p.cargo, 21.86);
+    add("Framkant lastutrymme – bakersta punkt på tåget", p.cargoSpan, 22.9);
+    add("Bredd" + (p.temp ? " (temperaturkontrollerad påbyggnad)" : ""), p.width, p.temp ? 2.60 : 2.55);
+    c.push({ label: "Låsningsfria bromsar och kopplingsanordningar enligt Transportstyrelsen", state: p.okABS ? 'ok' : 'missing', confirm: true });
+    c.push({ label: "Varje motordrivet fordon vänder inom cirkelring 12,5 m / 5,3 m", state: p.okTurnA ? 'ok' : 'missing', confirm: true });
+    c.push({ label: "Fordonståget uppfyller vändningskraven (12,5 m / 2,0 m)", state: p.okTurnTag ? 'ok' : 'missing', confirm: true });
+    var fail = c.some(function (x) { return x.state === 'fail'; });
+    var miss = c.some(function (x) { return x.state === 'missing'; });
+    return { status: fail ? 'fail2525' : (miss ? 'pending2525' : 'ok2525'), checks: c };
+  }
+
+  // 4 kap. 12 § punkt 1–3. g = {type:'enkel'|'boggi'|'trippel', drive:bool, onMotor:bool, spread:m, loads:[ton], dual:bool, air:bool, reg:ton}
+  var SINGLE = { drive: {1:11.5,2:10,3:8,4:11.5}, free: {1:10,2:10,3:8,4:10} };
+  function groupLimit(k, g) {
+    var lim = null, why = '';
+    if (g.type === 'enkel') {
+      lim = g.drive ? SINGLE.drive[k] : SINGLE.free[k];
+      why = g.drive ? 'drivande axel' : 'axel som inte är drivande';
+    } else if (g.type === 'boggi') {
+      if (g.spread == null || isNaN(g.spread)) return { missing: 'avstånd mellan axlarna' };
+      var s = cm(g.spread);
+      if (s >= 200) return { invalid: 'Två axlar med 2,0 m eller mer emellan är ingen boggi – de räknas som två enkelaxlar.' };
+      var special = !!(g.onMotor && g.drive && g.dual && (g.air || (g.loads.length === 2 && g.loads.every(function (x) { return x != null && cm(x) <= 950; }))));
+      if (s < 100) { lim = 11.5; why = 'boggi, mindre än 1,0 m'; }
+      else if (s < 130) { lim = {1:16,2:16,3:12,4:16}[k]; why = 'boggi, 1,0 m men inte 1,3 m'; }
+      else if (s < 180) {
+        lim = special ? {1:19,2:16,3:12,4:19}[k] : {1:18,2:16,3:12,4:18}[k];
+        why = 'boggi, 1,3 m men inte 1,8 m' + (special && (k === 1 || k === 4) ? ', drivaxel med dubbelmonterade hjul och ' + (g.air ? 'luftfjädring' : 'högst 9,5 ton per axel') : '');
+      }
+      else { lim = {1:20,2:16,3:12,4:20}[k]; why = 'boggi, 1,8 m eller större'; }
+    } else if (g.type === 'trippel') {
+      if (g.spread == null || isNaN(g.spread)) return { missing: 'avstånd mellan de yttre axlarna' };
+      var t = cm(g.spread);
+      if (t >= 500) return { invalid: 'Tre axlar med 5,0 m eller mer mellan första och tredje är ingen trippelaxel.' };
+      if (t < 260) { lim = {1:21,2:20,3:13,4:21}[k]; why = 'trippelaxel, mindre än 2,6 m'; }
+      else if (t < 440) { lim = {1:24,2:22,3:13,4:24}[k]; why = 'trippelaxel, 2,6 m men inte 4,4 m'; }
+      else if (t < 470) { lim = {1:25,2:22,3:13,4:25}[k]; why = 'trippelaxel, 4,4 m men inte 4,7 m'; }
+      else { lim = {1:26,2:22,3:13,4:26}[k]; why = 'trippelaxel, 4,7 m eller större'; }
+    }
+    if (g.reg && cm(g.reg) < cm(lim)) { lim = g.reg; why = 'registrerad garanterad belastning'; }
+    return { t: lim, why: why };
+  }
+  function groupCheck(k, g) {
+    var L = groupLimit(k, g);
+    if (L.missing || L.invalid) return L;
+    var sum = 0, miss = false;
+    g.loads.forEach(function (x) { if (x == null || isNaN(x)) miss = true; else sum += cm(x); });
+    if (miss) return { t: L.t, why: L.why, missing: 'vikt på varje axel' };
+    return { t: L.t, why: L.why, load: sum / 100, ok: sum <= cm(L.t), diff: Math.round(cm(L.t) - sum) / 100 };
+  }
+
+  // TSFS 2019:127 bilaga. Vikter i ton, krafter i kN. g = 9,81 m/s² enligt ECE-reglemente 55 (TSFS 1 kap. 2 §).
+  var G = 9.81;
+  function coupling(combo, p) {
+    var o = [];
+    if (combo === 1) {
+      o.push({ k: 'D', name: 'D-värde, dragstångskoppling', v: G * p.T * p.R / (p.T + p.R) });
+    } else if (combo === 2) {
+      var a = p.air ? 1.8 : 2.4, q = Math.max((p.X * p.X) / (p.L * p.L), 1);
+      o.push({ k: 'Dc', name: 'Dc-värde, dragstångskoppling', v: G * p.T * p.C / (p.T + p.C) });
+      o.push({ k: 'V', name: 'V-värde', v: a * p.C * q });
+    } else if (combo === 3) {
+      o.push({ k: 'D', name: 'D-värde, vändskivskoppling', v: G * 0.6 * p.T * p.R / (p.R + p.WT) });
+    } else if (combo === 4) {
+      o.push({ k: 'Dc', name: 'Dc-värde, dragstångskoppling (lastbil–dolly)', v: G * p.T * (p.Cd + p.Rb) / (p.T + p.Cd + p.Rb) });
+      o.push({ k: 'V', name: 'V-värde (dolly)', v: Math.max(54 / p.L, 5 * p.Cd / p.L) });
+      o.push({ k: 'D', name: 'D-värde, vändskivskoppling (dolly–påhängsvagn)', v: 0.5 * G * (p.T + p.Wd) * (p.Cd - p.Wd + p.Rb + 0.08 * (p.T + p.Wd)) / (p.T + p.Wd + p.Rb) });
+    } else if (combo === 5) {
+      var a5 = p.air ? 1.8 : 2.4, q5 = Math.max((p.X * p.X) / (p.L * p.L), 1), s5 = p.T - p.WT + p.Rb + p.C;
+      o.push({ k: 'Dc', name: 'Dc-värde, dragstångskoppling (påhängsvagn–släpkärra)', v: 0.65 * G * p.C * (p.T + p.Rb) / (p.C + p.T + p.Rb) });
+      o.push({ k: 'V', name: 'V-värde (släpkärra)', v: a5 * p.C * q5 });
+      o.push({ k: 'D', name: 'D-värde, vändskivskoppling', v: 0.5 * G * s5 * (p.T + 0.08 * s5) / (p.T + p.Rb + p.C) });
+    } else if (combo === 6) {
+      var d1 = 0.5 * G * (p.T + p.Rb1 + p.Wd) * ((p.Cd - p.Wd + p.Rb2) + 0.08 * (p.T + p.Rb1 + p.Wd)) / (p.T + p.Rb1 + p.Rb2 + p.Wd);
+      var s6 = p.T - p.WT + p.Rb1 + p.Cd + p.Rb2;
+      var d2 = 0.5 * G * s6 * (p.T + 0.08 * s6) / (p.T + p.Rb1 + p.Rb2 + p.Cd);
+      o.push({ k: 'Dc', name: 'Dc-värde, dragstångskoppling (påhängsvagn–dolly)', v: 0.65 * G * (p.T + p.Rb1) * (p.Cd + p.Rb2) / (p.T + p.Rb1 + p.Cd + p.Rb2) });
+      o.push({ k: 'V', name: 'V-värde (dolly)', v: Math.max(54 / p.L, 5 * p.Cd / p.L) });
+      o.push({ k: 'D', name: 'D-värde, vändskivskoppling (det största av D₁ ' + fmt(d1) + ' och D₂ ' + fmt(d2) + ' kN)', v: Math.max(d1, d2) });
+    } else if (combo === 7) {
+      var a7 = p.air ? 1.8 : 2.4;
+      var v2 = a7 * p.C2 * Math.max((p.X2 * p.X2) / (p.L2 * p.L2), 1);
+      var v1 = Math.sqrt(Math.pow(a7 * p.C1 * (p.X1 * p.X1) / (p.L1 * p.L1), 2) + Math.pow(v2 * (p.t1 * p.t1) / (p.L1 * p.L1), 2));
+      o.push({ k: 'Dc', name: 'Dc-värde, dragstångskoppling', v: 0.9 * G * p.T * (p.C1 + p.C2) / (p.T + p.C1 + p.C2) });
+      o.push({ k: 'V1', name: 'V₁-värde (första släpkärran)', v: v1 });
+      o.push({ k: 'V2', name: 'V₂-värde (andra släpkärran)', v: v2 });
+    } else if (combo === 8) {
+      var s8 = p.T - p.WT + p.Rb1 + p.Rb2;
+      o.push({ k: 'D', name: 'D-värde, vändskivskoppling', v: 0.5 * G * s8 * (p.T + 0.08 * s8) / (p.T + p.Rb1 + p.Rb2) });
+    }
+    return o;
+  }
+
+  function fmt(x) { return String(r2(x)).replace('.', ','); }
+  return { coupling: coupling, groupLimit: groupLimit, groupCheck: groupCheck, table: table, trailerTable: trailerTable, vehicleCap: vehicleCap, minGap: minGap, weights: weights, length: length, fmt: fmt, cm: cm };
+})();
+
+{
+const $=id=>document.getElementById(id);
+const num=id=>{const s=($(id).value||'').trim().replace(/\s/g,'').replace(',','.');if(s==='')return null;const v=Number(s);return isFinite(v)&&v>0?v:NaN};
+const f=CE.fmt;
+let wType='slap',lType='slap';
+function seg(id,cb){$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;for(const x of $(id).children)x.setAttribute('aria-pressed',x===b);cb(b.dataset.v)})}
+['vikt','axlar','koppling','langd','ref'].forEach(t=>$('t-'+t).addEventListener('click',()=>{['vikt','axlar','koppling','langd','ref'].forEach(u=>{$('t-'+u).setAttribute('aria-selected',u===t);$('p-'+u).hidden=u!==t})}));
+seg('wType',v=>{wType=v;calcW()});seg('lType',v=>{lType=v;calcL()});
+
+function semi(k){
+  const t=$('pT').value;let r;
+  if(t==='enkel')r=CE.groupLimit(k,{type:'enkel',loads:[]});
+  else if(t==='tva'){const e=CE.groupLimit(k,{type:'enkel',loads:[]});r={t:e.t*2,why:'två axlar som inte är drivande, '+f(e.t)+' ton per axel'}}
+  else{const sp=num('pS');r=CE.groupLimit(k,{type:t,spread:sp,loads:[]})}
+  if(r.missing)return `<div class="row"><span>Påhängsvagnens axlar</span><b>–</b></div><div class="why">Fyll i ${r.missing}.</div>`;
+  if(r.invalid)return `<div class="row"><span>Påhängsvagnens axlar</span><b>–</b></div><div class="warn">${r.invalid}</div>`;
+  return `<div class="row"><span>Påhängsvagnens axlar</span><b>${f(r.t)} ton</b></div><div class="why">${r.why}</div>`;
+}
+function last(C){
+  const a=num('tA'),b=num('tB');
+  if(a==null||b==null||isNaN(a)||isNaN(b))return '<div class="row"><span>Lasten får väga</span><b>–</b></div><div class="why">Fyll i båda tjänstevikterna.</div>';
+  const L=(CE.cm(C)-CE.cm(a)-CE.cm(b))/100;
+  if(L<=0)return `<div class="row"><span>Lasten får väga</span><b style="color:var(--or)">0 ton</b></div><div class="warn">Tjänstevikterna (${f(a)} + ${f(b)} ton) är redan minst lika stora som ${f(C)} ton.</div>`;
+  return `<div class="row"><span>Lasten får väga</span><b style="color:var(--gr)">${f(L)} ton</b></div><div class="why">${f(C)} − ${f(a)} − ${f(b)} ton tjänstevikt</div>`;
+}
+function calcW(){
+  const s=wType==='slap';
+  $('bWrap').hidden=!s;$('rBWrap').hidden=!s;
+  $('aHead').textContent=s?'Lastbil (dragfordon)':'Dragbil';
+  const ax=+$('axA').value;$('specWrap').hidden=ax<3;
+  $('cSlap').hidden=!s;$('cPah').hidden=s;$('pWrap').hidden=s;
+  $('tAL').textContent=s?'Tjänstevikt lastbil (ton)':'Tjänstevikt dragbil (ton)';$('tBL').textContent=s?'Tjänstevikt släpvagn (ton)':'Tjänstevikt påhängsvagn (ton)';
+  const pT=$('pT').value;$('pSW').hidden=pT==='enkel'||pT==='tva';$('pSL').textContent=pT==='trippel'?'Avstånd mellan de yttre axlarna (m)':'Avstånd mellan axlarna (m)';
+  let dC=num('dC');
+  if(!s){const a=num('d5'),b=num('dK');dC=(a&&b&&!isNaN(a)&&!isNaN(b))?(CE.cm(a)+CE.cm(b))/100:null;
+    $('cSum').textContent=dC?`Dragbilens första axel – påhängsvagnens sista axel: ${f(a)} + ${f(b)} = ${f(dC)} m.`:'Appen lägger ihop måtten: kingpin sitter i vändskivans centrum.'}
+  const p={type:wType,axlesA:ax,special:ax>=3&&$('spec').checked,dA:num('dA'),dB:num('dB'),dC:dC,regA:num('rA'),regB:num('rB'),regTag:num('rT')};
+  const bad=[['dA','dragfordonets axelavstånd'],['dC',s?'ekipagets axelavstånd':'måtten till vändskivan och kingpin']].concat(s?[['dB','släpvagnens axelavstånd']]:[]);
+  const miss=bad.filter(([k])=>p[k]==null||isNaN(p[k]));
+  for(const k of ['regA','regB','regTag'])if(isNaN(p[k]))p[k]=null;
+  const out=$('wOut');
+  if(miss.length){out.innerHTML=`<div class="res wait"><b>Fyll i ${miss.map(m=>m[1]).join(', ')}.</b><p class="hint">Resultatet för BK1–BK4 visas här direkt.</p></div>`;return}
+  if(p.dC<p.dA||(s&&p.dC<p.dB)){out.innerHTML=`<div class="res bad"><b>Kontrollera måtten:</b> ekipagets axelavstånd kan inte vara kortare än ett enskilt fordons.</div>`;return}
+  const gD=num('gD');
+  out.innerHTML='<div class="bk">'+[1,2,3,4].map(k=>{
+    const w=CE.weights(k,p);
+    let g='';
+    if(gD&&!isNaN(gD)){const m=CE.minGap(k,$('gA').value,$('gB').value);
+      g=m==null?`<div class="warn">Avstånd mellan fordonen: trafikförordningen anger inget minsta avstånd för denna axelkombination på BK${k}.</div>`
+       :CE.cm(gD)>=m*100?`<div class="good">Avstånd mellan fordonen ${f(gD)} m – minst ${m} m krävs. OK.</div>`
+       :`<div class="warn">Avstånd mellan fordonen ${f(gD)} m är kortare än ${m} m. Då får ingen möjlig axelkombination överskrida bruttoviktstabellen – det kan appen inte kontrollera.</div>`}
+    const bk4=k===4?`<div class="warn">BK4: lagtexten (bilaga 4) anger inga särskilda gränser för enskilda fordon, som 18/25/28/31/32 ton i bilaga 1. Axeltrycken gäller alltid. Kontrollera med Trafikverket vid tvekan.</div>`:'';
+    return `<div class="bkc"><div class="t">BK${k}</div><div class="v">${f(w.C)} <small>ton</small></div><div class="why">Hela ekipaget – begränsas av ${w.cWhy}</div>${last(w.C)}
+      <div class="row"><span>${s?'Lastbil':'Dragbil'}</span><b>${f(w.A)} ton</b></div><div class="why">${w.aWhy}</div>
+      ${!s?semi(k):''}${s?`<div class="row"><span>Släpvagn</span><b>${f(w.B)} ton</b></div><div class="why">${w.bWhy}</div>`:''}${g}${bk4}</div>`}).join('')+'</div>';
+}
+function calcL(){
+  const L=num('L'),out=$('lOut'),box=$('l2525');
+  $('lBWrap').hidden=lType!=='slap';document.querySelectorAll('.kp').forEach(e=>e.hidden=lType==='slap');
+  if(L==null||isNaN(L)){out.innerHTML='<div class="res wait"><b>Fyll i ekipagets längd.</b></div>';box.hidden=true;return}
+  const r=CE.length({type:lType,L,lenA:num('lA'),lenB:num('lB'),kingRear:num('kR'),kingFront:num('kF'),cargo:num('cg'),cargoSpan:num('cs'),width:num('wd'),temp:$('tmp').checked,okABS:$('cABS').checked,okTurnA:$('cTA').checked,okTurnTag:$('cTT').checked});
+  box.hidden=!/2525/.test(r.status);
+  const M={ok:['ok','Godkänd längd',`${f(L)} m är högst 24,0 m. Ekipaget får köras på alla vägar som inte är enskilda.`],
+   over:['bad','För långt',`${f(L)} m är längre än 25,25 m. Fordonståg upp till 34,5 m får bara köras på vägnät som Trafikverket eller kommunen har pekat ut, med särskilda krav (TSFS 2025:17). Det räknar appen inte ut.`],
+   pending2525:['wait','Över 24,0 m – kontrollera villkoren',`${f(L)} m är tillåtet endast om alla villkor för 25,25 m nedan är uppfyllda.`],
+   fail2525:['bad','För långt',`${f(L)} m kräver att alla villkor för 25,25 m är uppfyllda, och minst ett är det inte.`],
+   ok2525:['ok','Godkänd längd',`${f(L)} m – alla villkor för 25,25 m är uppfyllda.`]}[r.status];
+  out.innerHTML=`<div class="res ${M[0]}"><div class="big">${M[1]}</div><p>${M[2]}</p></div>`;
+  $('cl').innerHTML=r.checks.map(c=>{const d=c.state==='ok'?['d-ok','✓']:c.state==='fail'?['d-fail','✕']:['d-miss','?'];
+    const t=c.confirm?'':c.val!=null&&!isNaN(c.val)?` – ${f(c.val)} m, högst ${f(c.lim)} m`:` – högst ${f(c.lim)} m, fyll i`;
+    return `<li><span class="dot ${d[0]}">${d[1]}</span><span>${c.label}${t}</span></li>`}).join('');
+}
+document.addEventListener('input',()=>{calcW();calcL()});document.addEventListener('change',()=>{calcW();calcL()});
+calcW();calcL();
+
+// ---- Axlar ----
+let G=[{veh:'bil',type:'enkel',drive:false},{veh:'bil',type:'boggi',drive:true},{veh:'slap',type:'boggi',drive:false},{veh:'slap',type:'boggi',drive:false}];
+const nAx=t=>t==='enkel'?1:t==='boggi'?2:3;
+const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function drawG(){
+  $('gl').innerHTML=G.map((g,i)=>{
+    const loads=Array.from({length:nAx(g.type)},(_,j)=>`<div><label for="g${i}w${j}">Axel ${j+1} (ton)</label><input type="text" inputmode="decimal" id="g${i}w${j}" data-i="${i}" data-f="w${j}" value="${esc((g.w||[])[j])}"></div>`).join('');
+    const motor=g.veh==='bil';
+    return `<div class="card" style="background:#0f0f0e;margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">Axelgrupp ${i+1}</h3><button class="rm" data-i="${i}" style="min-height:44px;background:none;border:1.5px solid #4a4741;color:var(--ink);border-radius:10px;padding:4px 12px">Ta bort</button></div>
+    <div class="grid2"><div><label for="g${i}v">Sitter på</label><select id="g${i}v" data-i="${i}" data-f="veh"><option value="bil"${motor?' selected':''}>Lastbil / dragbil</option><option value="slap"${motor?'':' selected'}>Släp / påhängsvagn / dolly</option></select></div>
+    <div><label for="g${i}t">Typ</label><select id="g${i}t" data-i="${i}" data-f="type"><option value="enkel"${g.type==='enkel'?' selected':''}>Enkelaxel</option><option value="boggi"${g.type==='boggi'?' selected':''}>Boggi (2 axlar)</option><option value="trippel"${g.type==='trippel'?' selected':''}>Trippelaxel (3 axlar)</option></select></div></div>
+    ${g.type==='enkel'?'':`<label for="g${i}s">${g.type==='boggi'?'Avstånd mellan axlarna (m)':'Avstånd mellan de yttre axlarna (m)'}</label><input type="text" inputmode="decimal" id="g${i}s" data-i="${i}" data-f="spread" value="${esc(g.spread)}">`}
+    <div class="grid3">${loads}</div>
+    ${motor&&g.type!=='trippel'?`<label class="chk"><input type="checkbox" data-i="${i}" data-f="drive"${g.drive?' checked':''}><span>${g.type==='enkel'?'Axeln är drivande':'Boggin har drivaxel'}</span></label>`:''}
+    ${motor&&g.type==='boggi'&&g.drive?`<label class="chk"><input type="checkbox" data-i="${i}" data-f="dual"${g.dual?' checked':''}><span>Drivaxeln har dubbelmonterade hjul</span></label><label class="chk"><input type="checkbox" data-i="${i}" data-f="air"${g.air?' checked':''}><span>Luftfjädring eller likvärdig fjädring</span></label>`:''}
+    <label for="g${i}r">Registrerad garanterad belastning för gruppen (ton, valfritt)</label><input type="text" inputmode="decimal" id="g${i}r" data-i="${i}" data-f="reg" value="${esc(g.reg)}"></div>`}).join('');
+  calcA();
+}
+const pn=v=>{const s=(v||'').trim().replace(/\s/g,'').replace(',','.');if(s==='')return null;const x=Number(s);return isFinite(x)&&x>=0?x:NaN};
+function calcA(){
+  if(!G.length){$('aOut').innerHTML='<div class="res wait"><b>Lägg till minst en axelgrupp.</b></div>';return}
+  $('aOut').innerHTML='<div class="bk">'+[1,2,3,4].map(k=>{
+    let allOk=true,any=false;
+    const rows=G.map((g,i)=>{
+      const r=CE.groupCheck(k,{type:g.type,drive:g.type==='trippel'?false:!!g.drive,onMotor:g.veh==='bil',spread:pn(g.spread),loads:Array.from({length:nAx(g.type)},(_,j)=>pn((g.w||[])[j])),dual:!!g.dual,air:!!g.air,reg:pn(g.reg)||null});
+      if(r.invalid){allOk=false;return `<div class="row"><span>Grupp ${i+1}</span></div><div class="warn">${r.invalid}</div>`}
+      if(r.load==null){allOk=false;return `<div class="row"><span>Grupp ${i+1}</span><b>max ${f(r.t)} ton</b></div><div class="why">${r.t!=null?r.why+' – ':''}fyll i ${r.missing}</div>`}
+      any=true;if(!r.ok)allOk=false;
+      return `<div class="row"><span>Grupp ${i+1}: ${f(r.load)} av ${f(r.t)} ton</span><b style="color:${r.ok?'var(--gr)':'var(--or)'}">${r.ok?'OK':'Över med '+f(-r.diff)+' ton'}</b></div><div class="why">${r.why}</div>`}).join('');
+    return `<div class="bkc" style="border-color:${any&&allOk?'var(--gr)':'var(--or)'}"><div class="t">BK${k}</div>${rows}</div>`}).join('')+'</div>';
+}
+$('gl').addEventListener('input',e=>{const t=e.target,i=t.dataset.i,fl=t.dataset.f;if(i==null)return;e.stopPropagation();
+  if(fl[0]==='w'&&fl.length===2){(G[i].w=G[i].w||[])[+fl[1]]=t.value;calcA()}
+  else if(t.type==='checkbox'){G[i][fl]=t.checked;drawG()}
+  else if(t.tagName==='SELECT'){G[i][fl]=t.value;if(fl==='type'){G[i].w=[];G[i].spread=''}drawG()}
+  else{G[i][fl]=t.value;calcA()}});
+$('gl').addEventListener('change',e=>e.stopPropagation());
+$('gl').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){G.splice(+b.dataset.i,1);drawG()}});
+$('addG').addEventListener('click',()=>{G.push({veh:'slap',type:'boggi'});drawG()});
+drawG();
+
+// ---- Koppling ----
+const KF={1:[['T','Lastbilens bruttovikt (ton)'],['R','Släpvagnens bruttovikt (ton)']],
+ 2:[['T','Lastbilens bruttovikt (ton)'],['C','Släpkärrans bruttovikt (ton)'],['X','Lastytans längd på släpkärran (m)'],['L','Dragöglans centrum – mitt mellan axlarna (m)']],
+ 3:[['T','Dragbilens bruttovikt (ton)'],['R','Påhängsvagnens bruttovikt (ton)'],['WT','Dragbilens tjänstevikt (ton)']],
+ 4:[['T','Lastbilens bruttovikt (ton)'],['Cd','Dollyns bruttovikt (ton)'],['Rb','Påhängsvagnens bruttovikt (ton)'],['Wd','Dollyns tjänstevikt (ton)'],['L','Dragöglans centrum – mitt i dollyns axelgrupp (m)']],
+ 5:[['T','Dragbilens bruttovikt (ton)'],['WT','Dragbilens tjänstevikt (ton)'],['Rb','Påhängsvagnens bruttovikt (ton)'],['C','Släpkärrans bruttovikt (ton)'],['X','Lastytans längd på släpkärran (m)'],['L','Dragöglans centrum – mitt mellan släpkärrans axlar (m)']],
+ 6:[['T','Dragbilens bruttovikt (ton)'],['WT','Dragbilens tjänstevikt (ton)'],['Rb1','Första påhängsvagnens bruttovikt (ton)'],['Cd','Dollyns bruttovikt (ton)'],['Wd','Dollyns tjänstevikt (ton)'],['Rb2','Andra påhängsvagnens bruttovikt (ton)'],['L','Dragöglans centrum – mitt mellan dollyns axlar (m)']],
+ 7:[['T','Lastbilens bruttovikt (ton)'],['C1','Första släpkärrans bruttovikt (ton)'],['C2','Andra släpkärrans bruttovikt (ton)'],['X1','Lastytans längd, första släpkärran (m)'],['X2','Lastytans längd, andra släpkärran (m)'],['L1','Lastbilens dragögla – mitt mellan första släpkärrans axlar (m)'],['L2','Första släpkärrans dragögla – mitt mellan andra släpkärrans axlar (m)'],['t1','Första släpkärrans axlar – dess bakre kopplingspunkt (m)']],
+ 8:[['T','Dragbilens bruttovikt (ton)'],['WT','Dragbilens tjänstevikt (ton)'],['Rb1','Linkens bruttovikt (ton)'],['Rb2','Påhängsvagnens bruttovikt (ton)']]};
+const KP={1:[['D','D-värde (kN)']],2:[['Dc','Dc-värde (kN)'],['V','V-värde (kN)']],3:[['D','D-värde (kN)']],4:[['Dc','Dc-värde, dragstång (kN)'],['V','V-värde, dolly (kN)'],['D','D-värde, vändskiva (kN)']],
+ 5:[['Dc','Dc-värde, dragstång (kN)'],['V','V-värde, släpkärra (kN)'],['D','D-värde, vändskiva (kN)']],
+ 6:[['Dc','Dc-värde, dragstång (kN)'],['V','V-värde, dolly (kN)'],['D','D-värde, vändskivor (kN)']],
+ 7:[['Dc','Dc-värde, dragstång (kN)'],['V1','V-värde, första släpkärran (kN)'],['V2','V-värde, andra släpkärran (kN)']],
+ 8:[['D','D-värde, vändskiva (kN)']]};
+const KS={1:p=>p.R,2:p=>p.C,3:p=>p.R,4:p=>p.Cd+p.Rb,5:p=>p.Rb+p.C,6:p=>p.Rb1+p.Cd+p.Rb2,7:p=>p.C1+p.C2,8:p=>p.Rb1+p.Rb2};
+let kv={};
+function drawK(){const c=+$('kC').value;$('kAirW').hidden=![2,5,7].includes(c);$('kAirW').querySelector('span').textContent=c===7?'Släpkärrorna har luftfjädring':'Släpkärran har luftfjädring';
+  $('kIn').innerHTML=KF[c].map(([k,l])=>`<div><label for="k_${k}">${l}</label><input type="text" inputmode="decimal" id="k_${k}" data-k="${k}" value="${esc(kv[k])}"></div>`).join('');
+  $('kPv').innerHTML=KP[c].map(([k,l])=>`<div><label for="kp_${k}">${l}</label><input type="text" inputmode="decimal" id="kp_${k}" data-k="p${k}" value="${esc(kv['p'+k])}"></div>`).join('');
+  calcK()}
+function calcK(){const c=+$('kC').value,p={air:$('kAir').checked},miss=[];
+  for(const [k,l] of KF[c]){const v=pn(kv[k]);if(v==null||isNaN(v)||v===0&&k!=='Wd')miss.push(l.replace(/ \(.*\)$/,'').toLowerCase());else p[k]=v}
+  if(miss.length){$('kOut').innerHTML=`<div class="res wait"><b>Fyll i ${miss.join(', ')}.</b></div>`;return}
+  if([3,5,6,8].includes(c)&&p.WT>p.T){$('kOut').innerHTML='<div class="res bad"><b>Kontrollera vikterna:</b> dragbilens tjänstevikt kan inte vara större än dess bruttovikt.</div>';return}
+  if([4,6].includes(c)&&p.Wd>p.Cd){$('kOut').innerHTML='<div class="res bad"><b>Kontrollera vikterna:</b> dollyns tjänstevikt kan inte vara större än dess bruttovikt.</div>';return}
+  const r=CE.coupling(c,p);let all=true,any=false;
+  const rows=r.map(x=>{const pv=pn(kv['p'+x.k]),val=Math.round(x.v*100)/100;
+    if(pv==null||isNaN(pv)){all=false;return `<div class="row"><span>${x.name}</span><b>${f(val)} kN</b></div><div class="why">Fyll i prestandavärdet för att jämföra.</div>`}
+    any=true;const ok=x.v<=pv;if(!ok)all=false;
+    return `<div class="row"><span>${x.name}</span><b style="color:${ok?'var(--gr)':'var(--or)'}">${f(val)} kN</b></div><div class="${ok?'good':'warn'}">${ok?'OK – prestandavärdet är '+f(pv)+' kN.':'För högt – prestandavärdet är bara '+f(pv)+' kN.'}</div>`}).join('');
+  let o1='';const O=pn($('kO1').value);
+  if(O&&!isNaN(O)){const sw=Math.round(KS[c](p)*100)/100,ok=CE.cm(sw)<=CE.cm(O);if(!ok)all=false;
+    o1=`<div class="row"><span>${c>=5?'Släpens sammanlagda bruttovikt':'Släpets bruttovikt'} mot O.1</span><b style="color:${ok?'var(--gr)':'var(--or)'}">${f(sw)} ton</b></div><div class="${ok?'good':'warn'}">${ok?'OK – högst '+f(O)+' ton.':'För tungt – bilen får dra högst '+f(O)+' ton.'}</div>`}
+  const head=any&&all?['ok','Kopplingen klarar ekipaget']:(any?['bad','Kopplingen klarar inte ekipaget']:['wait','Kopplingskrafter']);
+  $('kOut').innerHTML=`<div class="res ${head[0]}"><div class="big" style="font-size:clamp(28px,7vw,40px)">${head[1]}</div>${rows}${o1}</div>`}
+$('kOpts').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$('kC').value=b.dataset.v;for(const x of $('kOpts').children)x.setAttribute('aria-pressed',x===b);drawK()});
+$('p-koppling').addEventListener('input',e=>{e.stopPropagation();const k=e.target.dataset.k;if(k)kv[k]=e.target.value;calcK()});
+$('p-koppling').addEventListener('change',e=>e.stopPropagation());
+drawK();
+}
+</script>
+</body>
+</html>
